@@ -1,3 +1,6 @@
+mod algorithms;
+mod picture;
+
 use std::fs::File;
 use std::io::Write;
 
