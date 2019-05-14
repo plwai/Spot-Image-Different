@@ -1,4 +1,3 @@
-mod algorithms;
 mod picture;
 
 use std::fs::File;
