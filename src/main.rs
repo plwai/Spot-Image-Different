@@ -1,23 +1,10 @@
 mod picture;
 
-use std::fs::File;
-use std::io::Write;
-
-use image;
-use image::*;
+use picture::Picture;
 
 fn main() {
-    let mut raw_data_file = File::create("./picture_raw.txt").unwrap();
-    let img = image::open("./original.jpg").unwrap();
+    let mut picture_1 = Picture::load("./left.jpg".to_string()).unwrap();
+    let mut picture_2 = Picture::load("./right.jpg".to_string()).unwrap();
 
-    for (x, y, data) in img.pixels() {
-        let rgb = data.to_rgb();
-        let [r, g, b] = rgb.data;
-
-        write!(raw_data_file, "{} {} {} ", r, g, b).unwrap();
-
-        if x == 0 && y != 0 {
-            writeln!(raw_data_file, "").unwrap();
-        }
-    }
+    picture_1.spot_different(&mut picture_2, 0.4);
 }
