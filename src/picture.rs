@@ -19,6 +19,7 @@ impl Picture {
         }
     }
 
+    // SSIM comparison with only one block loop
     pub fn spot_different(&mut self, rhs_picture: &mut Picture, threshold: f32) {
         let block_dimension = (10 as u32, 10 as u32);
 
@@ -63,7 +64,7 @@ impl Picture {
 
             let mut current_origin = (block_dimension.0 * col, block_dimension.1 * row);
 
-            // Check right and bottom
+            // Check right and bottom to merge block
             if col + 1 < col_num {
                 let right = img_block_map.get(&(row * col_num + col + 1)).unwrap();
 
@@ -94,11 +95,69 @@ impl Picture {
 
             let block_img_1 = self.img.crop(crop_origin_x, crop_origin_y, 40, 40);
             let block_img_2 = rhs_picture.img.crop(crop_origin_x, crop_origin_y, 40, 40);
-            block_img_1.save(format!("save_1_{}_{}.jpg", current_origin.0, current_origin.1)).unwrap();
-            block_img_2.save(format!("save_2_{}_{}.jpg", current_origin.0, current_origin.1)).unwrap();
+            block_img_1.save(format!("save_1_{}_{}_L.jpg", current_origin.0, current_origin.1)).unwrap();
+            block_img_2.save(format!("save_2_{}_{}_L.jpg", current_origin.0, current_origin.1)).unwrap();
         }
     }
 
+    pub fn spot_different2(&mut self, rhs_picture: &mut Picture) {
+        let result = Picture::get_diff_points(&mut self.img, &mut rhs_picture.img, (10, 10), 0.4, 0.9);
+
+        println!("");
+
+        for p in result.iter() {
+            print!("{} {}, ", p.x, p.y);
+        }
+    }
+
+    // Compare using SSIM algorithm from large blocks to small blocks
+    // threshold < 1.0
+    // threshold_delta_rate between 0 - 1.0
+    fn get_diff_points(img_1: &mut DynamicImage, img_2 : &mut DynamicImage, block_dimension: (u32, u32), threshold: f32, threshold_delta_rate: f32) -> Vec<Point> {
+        let col_num = (img_1.dimensions().0 as f32 / block_dimension.0 as f32).ceil() as u32;
+        let row_num = (img_1.dimensions().1 as f32 / block_dimension.1 as f32).ceil() as u32;
+
+        let mut local_points = vec!();
+
+        for row in 0..row_num {
+            for col in 0..col_num {
+                let current_origin = (block_dimension.0 * col, block_dimension.1 * row);
+
+                let mut block_img_1 = img_1.crop(current_origin.0, current_origin.1, block_dimension.0, block_dimension.1);
+                let mut block_img_2 = img_2.crop(current_origin.0, current_origin.1, block_dimension.0, block_dimension.1);
+
+                let ssim = Picture::ssim_rgb(&block_img_1, &block_img_2);
+
+                if ssim < threshold {
+                    println!("{} {} {}", current_origin.0, current_origin.1, ssim);
+
+                    if block_dimension != (1, 1) {
+                        let inner_block_dimension = (
+                            (block_dimension.0 as f32 / 2.0).floor() as u32,
+                            (block_dimension.1 as f32 / 2.0).floor() as u32
+                        );
+
+                        let inner_points = Self::get_diff_points(&mut block_img_1, &mut block_img_2, inner_block_dimension, threshold * threshold_delta_rate, threshold_delta_rate);
+
+                        for point in inner_points.iter() {
+                            local_points.push(Point::new(current_origin.0 + point.x, current_origin.1 + point.y));
+                        }
+                    }
+                    else {
+                        local_points.push(Point::new(current_origin.0, current_origin.1));
+                    }
+                }
+            }
+        }
+
+        local_points
+    }
+
+    fn dbscan(points: Vec<Point>) {
+
+    }
+
+    // SSIM using Luma data
     fn ssim(img_1: &DynamicImage, img_2 : &DynamicImage) -> f32 {
         let img_1 = img_1.grayscale();
         let img_2 = img_2.grayscale();
@@ -166,6 +225,7 @@ impl Picture {
         (((mu_x.pow(2) + mu_y.pow(2)) as f32 + c1) * ((sigma_x + sigma_y) as f32 + c2))
     }
 
+    // SSIM using RGB data
     fn ssim_rgb(img_1: &DynamicImage, img_2 : &DynamicImage) -> f32 {
         let block_dimension = img_1.dimensions();
         let block_total_pixel = (block_dimension.0 * block_dimension.1) as i64;
@@ -297,5 +357,18 @@ impl Picture {
         (((mu_x.2.pow(2) + mu_y.2.pow(2)) as f32 + c1) * ((sigma_x.2 + sigma_y.2) as f32 + c2));
 
         (ssim_r + ssim_g + ssim_b) / 3.0
+    }
+}
+
+struct Point {
+    pub x: u32,
+    pub y: u32
+}
+
+impl Point {
+    pub fn new(x: u32, y: u32) -> Self {
+        Point {
+            x, y
+        }
     }
 }
