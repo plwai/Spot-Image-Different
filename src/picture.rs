@@ -134,7 +134,7 @@ impl Picture {
                 points.push(point);
                 acc
             });
-            
+
         let mut count = 0;
         let mut group_num = 1;
 
@@ -244,6 +244,7 @@ impl Picture {
             if neighbors.len() < min_pts {
                 // -1 as noise
                 points_map.insert(*point, Some(-1));
+                continue;
             }
 
             cluster_id = cluster_id + 1;
@@ -253,6 +254,7 @@ impl Picture {
 
             loop {
                 for index in start..neighbors.len() {
+                    start = index;
                     let sp = neighbors[index];
 
                     if points_map[sp] == Some(-1) {
@@ -275,8 +277,6 @@ impl Picture {
                     if seed_neighbors.len() >= min_pts {
                         neighbors.extend(seed_neighbors);
                     }
-
-                    start = index;
                 }
 
                 if start == neighbors.len() - 1 {
