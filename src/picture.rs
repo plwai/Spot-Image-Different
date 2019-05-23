@@ -125,11 +125,7 @@ impl Picture {
 
         println!("");
 
-        for p in result.iter() {
-            print!("{} {}, ", p.x, p.y);
-        }
-
-        let result = Picture::dbscan(&result, 2.0, 1);
+        let result = Picture::dbscan(&result, 10.0, 1);
         let result = result
             .iter()
             .fold(HashMap::new(), |mut acc, (point, group)| {
@@ -138,15 +134,19 @@ impl Picture {
                 points.push(point);
                 acc
             });
+            
         let mut count = 0;
+        let mut group_num = 1;
+
         for (group, points) in result.iter() {
             println!("");
             println!("");
-            println!("Group {}:", group);
+            println!("Group Num {}: Cluster Group: {}", group_num, group);
             for p in points.iter() {
                 print!("{} {}, ", p.x, p.y);
                 count = count + 1;
             }
+            group_num = group_num + 1;
         }
         println!("");
         println!("");
@@ -188,7 +188,7 @@ impl Picture {
                 let ssim = Picture::ssim_rgb(&block_img_1, &block_img_2);
 
                 if ssim < threshold {
-                    println!("{} {} {}", current_origin.0, current_origin.1, ssim);
+                    //println!("{} {} {}", current_origin.0, current_origin.1, ssim);
 
                     if block_dimension != (1, 1) {
                         let inner_block_dimension = (
