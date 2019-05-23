@@ -138,15 +138,19 @@ impl Picture {
                 points.push(point);
                 acc
             });
-
+        let mut count = 0;
         for (group, points) in result.iter() {
             println!("");
             println!("");
             println!("Group {}:", group);
             for p in points.iter() {
                 print!("{} {}, ", p.x, p.y);
+                count = count + 1;
             }
         }
+        println!("");
+        println!("");
+        println!("{}", count);
     }
 
     // Compare using SSIM algorithm from large blocks to small blocks
@@ -219,7 +223,7 @@ impl Picture {
     fn dbscan(
         points: &Vec<Point>,
         eps: f32,
-        minPts: usize,
+        min_pts: usize,
     ) -> HashMap<Point, std::option::Option<i32>> {
         let mut cluster_id = 0;
         let mut points_map = points.iter().fold(HashMap::new(), |mut acc, p| {
@@ -237,7 +241,7 @@ impl Picture {
                 .filter(|p| Self::calculate_distance(&p, &point) <= eps)
                 .collect::<Vec<_>>();
 
-            if neighbors.len() < minPts {
+            if neighbors.len() < min_pts {
                 // -1 as noise
                 points_map.insert(*point, Some(-1));
             }
@@ -268,7 +272,7 @@ impl Picture {
                         })
                         .collect::<Vec<_>>();
 
-                    if seed_neighbors.len() >= minPts {
+                    if seed_neighbors.len() >= min_pts {
                         neighbors.extend(seed_neighbors);
                     }
 
@@ -278,29 +282,6 @@ impl Picture {
                 if start == neighbors.len() - 1 {
                     break;
                 }
-
-                /*let neighbors = neighbors.iter().fold(vec!(), |acc, sp| {
-                    if points_map[sp] == Some(-1) {
-                        points_map.insert(**sp, Some(cluster_id));
-                    }
-
-                    if points_map[sp].is_some() {
-                        acc.push(*sp);
-                        return acc
-                    }
-
-                    points_map.insert(**sp, Some(cluster_id));
-
-                    let mut seed_neighbors = points.iter().filter(|p| {
-                        Self::calculate_distance(p, sp) <= eps && !neighbors.contains(p)
-                    }).collect::<Vec<_>>();
-
-                    if seed_neighbors.len() >= minPts {
-                        acc.append(&mut seed_neighbors);
-                    }
-
-                    acc
-                });*/
             }
         }
 
