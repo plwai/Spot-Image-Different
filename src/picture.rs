@@ -1,6 +1,7 @@
 use image;
 use image::*;
 
+use rand::{seq::SliceRandom, thread_rng};
 use std::collections::HashMap;
 
 pub struct Picture {
@@ -238,7 +239,7 @@ impl Picture {
 
             let mut neighbors = points
                 .iter()
-                .filter(|p| Self::calculate_distance(&p, &point) <= eps)
+                .filter(|p| p.calculate_distance(&point) <= eps)
                 .collect::<Vec<_>>();
 
             if neighbors.len() < min_pts {
@@ -269,9 +270,7 @@ impl Picture {
 
                     let seed_neighbors = points
                         .iter()
-                        .filter(|p| {
-                            Self::calculate_distance(p, sp) <= eps && !neighbors.contains(p)
-                        })
+                        .filter(|p| p.calculate_distance(sp) <= eps && !neighbors.contains(p))
                         .collect::<Vec<_>>();
 
                     if seed_neighbors.len() >= min_pts {
@@ -288,12 +287,55 @@ impl Picture {
         points_map
     }
 
-    fn calculate_distance(point_1: &Point, point_2: &Point) -> f32 {
-        (((point_1.x as i32 - point_2.x as i32).abs().pow(2)
-            + (point_1.y as i32 - point_2.y as i32).abs().pow(2)) as f32)
-            .sqrt()
+    // Smallest Circle Problem
+    fn compute_smallest_circle(points_group: HashMap<i32, Vec<Point>>) {
+        let circle = points_group.iter().map(|(group, points)| {
+            let shuffled_points = &mut points.clone()[..];
+            let mut rng = thread_rng();
+            shuffled_points.shuffle(&mut rng);
+
+            let shuffled_points = shuffled_points.to_vec();
+
+            let mut circle: Option<Circle> = None;
+
+            for (index, point) in shuffled_points.iter().enumerate() {
+                if circle.is_none() {
+                    if circle.is_some() && circle.unwrap().contains_point(point) {
+                        continue;
+                    }
+
+                    circle = Self::construct_one_point_circle_enclosing(
+                        &shuffled_points,
+                        point,
+                        index + 1,
+                    );
+                }
+            }
+
+            ()
+        });
     }
 
+    fn construct_one_point_circle_enclosing(
+        shuffled_points: &Vec<Point>,
+        point: &Point,
+        end: usize,
+    ) -> Option<Circle> {
+        let circle = Circle::new(*point, 0.0);
+
+        for point in shuffled_points.iter() {
+            if !circle.contains_point(point) {
+                if circle.radius == 0.0 {
+                } else {
+                }
+            }
+        }
+
+        Some(circle)
+    }
+
+    // https://stackoverflow.com/questions/27755514/circle-with-thickness-drawing-algorithm
+    fn draw_circle() {}
 
     // SSIM using Luma data
     fn ssim(img_1: &DynamicImage, img_2: &DynamicImage) -> f32 {
@@ -339,7 +381,6 @@ impl Picture {
                     total_diff_mu_xy + ((img_1_data as i64 - mu_x) * (img_2_data as i64 - mu_y));
             }
         }
-
 
         let sigma_x = img_1
             .pixels()
@@ -449,7 +490,6 @@ impl Picture {
             }
         }
 
-
         let sigma_x_mul_n = img_1
             .pixels()
             .map(|(_x, _y, data)| {
@@ -548,6 +588,15 @@ impl Point {
     pub fn new(x: u32, y: u32) -> Self {
         Point { x, y }
     }
+
+    fn calculate_distance(&self, point_2: &Point) -> f32 {
+        let (x, y) = (
+            (self.x as f32 - point_2.x as f32).abs(),
+            (self.y as f32 - point_2.y as f32).abs(),
+        );
+
+        x.hypot(y)
+    }
 }
 
 impl PartialEq for Point {
@@ -557,3 +606,29 @@ impl PartialEq for Point {
 }
 
 impl Eq for Point {}
+
+#[derive(Clone, Copy)]
+struct Circle {
+    pub mid_point: Point,
+    pub radius: f32,
+}
+
+impl Circle {
+    pub fn new(mid_point: Point, radius: f32) -> Self {
+        Circle { mid_point, radius }
+    }
+
+    fn contains_point(&self, point: &Point) -> bool {
+        self.mid_point.calculate_distance(point) <= self.radius
+    }
+
+    fn compute_diameter(&mut self, point_1: &Point, point_2: &Point) {
+        self.mid_point.x = (point_1.x + point_2.x) / 2;
+        self.mid_point.y = (point_1.y + point_2.y) / 2;
+
+        self.radius = self
+            .mid_point
+            .calculate_distance(point_1)
+            .max(self.mid_point.calculate_distance(point_2));
+    }
+}

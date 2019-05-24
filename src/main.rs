@@ -1,8 +1,5 @@
 mod picture;
 
-
-use image;
-use image::*;
 use picture::Picture;
 
 fn main() {
