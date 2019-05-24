@@ -3,6 +3,7 @@ use image::*;
 
 use rand::{seq::SliceRandom, thread_rng};
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 
 pub struct Picture {
     img: DynamicImage,
@@ -121,18 +122,18 @@ impl Picture {
     }
 
     pub fn spot_different2(&mut self, rhs_picture: &mut Picture) {
-        let result =
+        let points =
             Picture::get_diff_points(&mut self.img, &mut rhs_picture.img, (10, 10), 0.4, 0.9);
 
         println!("");
 
-        let result = Picture::dbscan(&result, 10.0, 1);
-        let result = result
+        let point_groups = Picture::dbscan(&points, 20.0, 1);
+        let result = point_groups
             .iter()
             .fold(HashMap::new(), |mut acc, (point, group)| {
                 let group = group.unwrap();
                 let points = acc.entry(group).or_insert(vec![]);
-                points.push(point);
+                points.push(*point);
                 acc
             });
 
@@ -152,6 +153,29 @@ impl Picture {
         println!("");
         println!("");
         println!("{}", count);
+
+        let circles = Self::compute_smallest_circle(result);
+
+        for circling in circles {
+            match circling {
+                Some(c) => {
+                    println!(
+                        "mid point: {} {}, radius: {}",
+                        c.mid_point.x, c.mid_point.y, c.radius
+                    );
+                    rhs_picture.draw_circle(
+                        c.mid_point.x as i32,
+                        c.mid_point.y as i32,
+                        c.radius as i32 + 13,
+                        c.radius as i32 + 17,
+                        (255, 0, 0),
+                    );
+                }
+                None => println!("NO CIRCLING! PPP"),
+            }
+        }
+
+        rhs_picture.img.save("Answer.jpg").unwrap();
     }
 
     // Compare using SSIM algorithm from large blocks to small blocks
@@ -207,12 +231,13 @@ impl Picture {
 
                         for point in inner_points.iter() {
                             local_points.push(Point::new(
-                                current_origin.0 + point.x,
-                                current_origin.1 + point.y,
+                                current_origin.0 as f32 + point.x,
+                                current_origin.1 as f32 + point.y,
                             ));
                         }
                     } else {
-                        local_points.push(Point::new(current_origin.0, current_origin.1));
+                        local_points
+                            .push(Point::new(current_origin.0 as f32, current_origin.1 as f32));
                     }
                 }
             }
@@ -287,19 +312,33 @@ impl Picture {
         points_map
     }
 
+    fn construct_diameter(point_1: &Point, point_2: &Point) -> Circle {
+        let x = (point_1.x + point_2.x) / 2.0;
+        let y = (point_1.y + point_2.y) / 2.0;
+
+        let new_point = Point::new(x, y);
+
+        let radius = new_point
+            .calculate_distance(point_1)
+            .max(new_point.calculate_distance(point_2));
+
+        Circle::new(new_point, radius)
+    }
+
     // Smallest Circle Problem
-    fn compute_smallest_circle(points_group: HashMap<i32, Vec<Point>>) {
-        let circle = points_group.iter().map(|(group, points)| {
-            let shuffled_points = &mut points.clone()[..];
-            let mut rng = thread_rng();
-            shuffled_points.shuffle(&mut rng);
+    fn compute_smallest_circle(points_group: HashMap<i32, Vec<Point>>) -> Vec<Option<Circle>> {
+        let circle = points_group
+            .iter()
+            .map(|(group, points)| {
+                let shuffled_points = &mut points.clone()[..];
+                let mut rng = thread_rng();
+                shuffled_points.shuffle(&mut rng);
 
-            let shuffled_points = shuffled_points.to_vec();
+                let shuffled_points = shuffled_points.to_vec();
 
-            let mut circle: Option<Circle> = None;
+                let mut circle: Option<Circle> = None;
 
-            for (index, point) in shuffled_points.iter().enumerate() {
-                if circle.is_none() {
+                for (index, point) in shuffled_points.iter().enumerate() {
                     if circle.is_some() && circle.unwrap().contains_point(point) {
                         continue;
                     }
@@ -310,23 +349,35 @@ impl Picture {
                         index + 1,
                     );
                 }
-            }
 
-            ()
-        });
+                circle
+            })
+            .collect();
+
+        circle
     }
 
     fn construct_one_point_circle_enclosing(
         shuffled_points: &Vec<Point>,
-        point: &Point,
+        point_1: &Point,
         end: usize,
     ) -> Option<Circle> {
-        let circle = Circle::new(*point, 0.0);
+        let mut circle = Circle::new(*point_1, 0.0);
 
-        for point in shuffled_points.iter() {
-            if !circle.contains_point(point) {
+        for index in 0..end {
+            let point_2 = &shuffled_points[index];
+
+            if !circle.contains_point(point_2) {
                 if circle.radius == 0.0 {
+                    circle = Self::construct_diameter(point_1, point_2);
                 } else {
+                    circle = Self::construct_two_point_circle_enclosing(
+                        shuffled_points,
+                        point_1,
+                        point_2,
+                        index + 1,
+                    )
+                    .unwrap();
                 }
             }
         }
@@ -334,8 +385,191 @@ impl Picture {
         Some(circle)
     }
 
+    fn construct_two_point_circle_enclosing(
+        shuffled_points: &Vec<Point>,
+        point_1: &Point,
+        point_2: &Point,
+        end: usize,
+    ) -> Option<Circle> {
+        let circle = Self::construct_diameter(point_1, point_2);
+        let mut left: Option<Circle> = None;
+        let mut right: Option<Circle> = None;
+
+        let point_3 = point_1.calculate_difference(point_2);
+
+        for index in 0..end {
+            let point_r = &shuffled_points[index];
+
+            if circle.contains_point(point_r) {
+                continue;
+            }
+
+            let cross_result = point_3.cross_product(&point_r.calculate_difference(point_1));
+            let circle_2 = Self::construct_circumcircle(point_1, point_2, point_r);
+
+            match circle_2 {
+                Some(c) => {
+                    if cross_result > 0.0
+                        && (left.is_none()
+                            || point_3.cross_product(&c.mid_point.calculate_difference(point_1))
+                                > point_3.cross_product(
+                                    &left.unwrap().mid_point.calculate_difference(point_1),
+                                ))
+                    {
+                        left = Some(c);
+                    } else if cross_result < 0.0
+                        && (right.is_none()
+                            || point_3.cross_product(&c.mid_point.calculate_difference(point_1))
+                                > point_3.cross_product(
+                                    &right.unwrap().mid_point.calculate_difference(point_1),
+                                ))
+                    {
+                        right = Some(c);
+                    }
+                }
+                None => continue,
+            }
+        }
+
+        if left.is_none() && right.is_none() {
+            return Some(circle);
+        } else if left.is_none() {
+            return right;
+        } else if right.is_none() {
+            return left;
+        } else {
+            if left.unwrap().radius <= right.unwrap().radius {
+                return left;
+            } else {
+                return right;
+            };
+        }
+    }
+
+    fn construct_circumcircle(a: &Point, b: &Point, c: &Point) -> Option<Circle> {
+        let ox = (a.x.min(b.x).min(c.x) + a.x.min(b.x).max(c.x)) / 2.0;
+        let oy = (a.y.min(b.y).min(c.y) + a.y.min(b.y).max(c.y)) / 2.0;
+        let (ax, ay) = (a.x - ox, a.y - oy);
+        let (bx, by) = (b.x - ox, b.y - oy);
+        let (cx, cy) = (c.x - ox, c.y - oy);
+        let d = (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by)) * 2.0;
+
+        if d == 0.0 {
+            return None;
+        }
+
+        let x = ((ax * ax + ay * ay) * (by - cy)
+            + (bx * bx + by * by) * (cy - ay)
+            + (cx * cx + cy * cy) * (ay - by))
+            / d;
+        let y = ((ax * ax + ay * ay) * (cx - bx)
+            + (bx * bx + by * by) * (ax - cx)
+            + (cx * cx + cy * cy) * (bx - ax))
+            / d;;
+
+        let p = Point::new(ox + x, oy + y);
+        let r = p
+            .calculate_distance(a)
+            .max(p.calculate_distance(b))
+            .max(p.calculate_distance(c));
+
+        Some(Circle {
+            mid_point: p,
+            radius: r,
+        })
+    }
+
+    fn draw_pixel(&mut self, x: i32, y: i32, colour: (u8, u8, u8)) {
+        let mut x = x;
+        let mut y = y;
+
+        if x >= self.img.dimensions().0 as i32 {
+            x = self.img.dimensions().0 as i32 - 1;
+        }
+
+        if y >= self.img.dimensions().1 as i32 {
+            y = self.img.dimensions().1 as i32 - 1;
+        }
+
+        if x < 0 {
+            x = 0;
+        }
+
+        if y < 0 {
+            y = 0;
+        }
+
+        self.img.put_pixel(
+            x as u32,
+            y as u32,
+            image::Rgba([colour.0, colour.1, colour.2, 1]),
+        );
+    }
+
     // https://stackoverflow.com/questions/27755514/circle-with-thickness-drawing-algorithm
-    fn draw_circle() {}
+    fn draw_circle(
+        &mut self,
+        xc: i32,
+        yc: i32,
+        inner_radius: i32,
+        outer_radius: i32,
+        colour: (u8, u8, u8),
+    ) {
+        let mut xo = outer_radius;
+        let mut xi = inner_radius;
+        let mut y = 0;
+        let mut erro = 1 - xo;
+        let mut erri = 1 - xi;
+
+        while xo >= y {
+            self.x_line(xc + xi, xc + xo, yc + y, colour);
+            self.y_line(xc + y, yc + xi, yc + xo, colour);
+            self.x_line(xc - xo, xc - xi, yc + y, colour);
+            self.y_line(xc - y, yc + xi, yc + xo, colour);
+            self.x_line(xc - xo, xc - xi, yc - y, colour);
+            self.y_line(xc - y, yc - xo, yc - xi, colour);
+            self.x_line(xc + xi, xc + xo, yc - y, colour);
+            self.y_line(xc + y, yc - xo, yc - xi, colour);
+
+            y = y + 1;
+
+            if erro < 0 {
+                erro += 2 * y + 1;
+            } else {
+                xo = xo - 1;
+                erro += 2 * (y - xo + 1);
+            }
+
+            if y > inner_radius {
+                xi = y;
+            } else {
+                if erri < 0 {
+                    erri += 2 * y + 1;
+                } else {
+                    xi = xi - 1;
+                    erri += 2 * (y - xi + 1);
+                }
+            }
+        }
+    }
+
+    fn x_line(&mut self, x1: i32, x2: i32, y: i32, colour: (u8, u8, u8)) {
+        let mut x1 = x1;
+
+        while x1 <= x2 {
+            self.draw_pixel(x1, y, colour);
+            x1 = x1 + 1;
+        }
+    }
+
+    fn y_line(&mut self, x: i32, y1: i32, y2: i32, colour: (u8, u8, u8)) {
+        let mut y1 = y1;
+
+        while y1 <= y2 {
+            self.draw_pixel(x, y1, colour);
+            y1 = y1 + 1;
+        }
+    }
 
     // SSIM using Luma data
     fn ssim(img_1: &DynamicImage, img_2: &DynamicImage) -> f32 {
@@ -578,24 +812,54 @@ impl Picture {
     }
 }
 
-#[derive(Clone, Hash, Copy)]
+#[derive(Clone, Copy)]
 struct Point {
-    pub x: u32,
-    pub y: u32,
+    pub x_id: u32,
+    pub y_id: u32,
+    pub x: f32,
+    pub y: f32,
 }
 
 impl Point {
-    pub fn new(x: u32, y: u32) -> Self {
-        Point { x, y }
+    pub fn new(x: f32, y: f32) -> Self {
+        Point {
+            x_id: x as u32,
+            y_id: y as u32,
+            x,
+            y,
+        }
     }
 
     fn calculate_distance(&self, point_2: &Point) -> f32 {
         let (x, y) = (
-            (self.x as f32 - point_2.x as f32).abs(),
-            (self.y as f32 - point_2.y as f32).abs(),
+            (self.x as f32 - point_2.x as f32),
+            (self.y as f32 - point_2.y as f32),
         );
 
         x.hypot(y)
+    }
+
+    fn calculate_difference(&self, point_2: &Point) -> Self {
+        let x = self.x - point_2.x;
+        let y = self.y - point_2.y;
+
+        Point {
+            x_id: x as u32,
+            y_id: y as u32,
+            x,
+            y,
+        }
+    }
+
+    fn cross_product(&self, point_2: &Point) -> f32 {
+        self.x as f32 * point_2.y as f32 - self.y as f32 * point_2.x as f32
+    }
+}
+
+impl Hash for Point {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.x_id.hash(state);
+        self.y_id.hash(state);
     }
 }
 
@@ -619,16 +883,6 @@ impl Circle {
     }
 
     fn contains_point(&self, point: &Point) -> bool {
-        self.mid_point.calculate_distance(point) <= self.radius
-    }
-
-    fn compute_diameter(&mut self, point_1: &Point, point_2: &Point) {
-        self.mid_point.x = (point_1.x + point_2.x) / 2;
-        self.mid_point.y = (point_1.y + point_2.y) / 2;
-
-        self.radius = self
-            .mid_point
-            .calculate_distance(point_1)
-            .max(self.mid_point.calculate_distance(point_2));
+        self.mid_point.calculate_distance(point) <= self.radius * (1.0 + 1e-14)
     }
 }
