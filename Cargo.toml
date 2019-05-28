@@ -1,5 +1,5 @@
 [package]
-name = "spot_the_difference"
+name = "spot_difference"
 version = "0.1.0"
 authors = ["Wai Pai Lee <pailee.wai@gmail.com>"]
 edition = "2018"

@@ -376,7 +376,7 @@ version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "spot_the_difference"
+name = "spot_difference"
 version = "0.1.0"
 dependencies = [
  "image 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)",
