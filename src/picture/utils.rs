@@ -371,3 +371,227 @@ pub fn get_diff_points(
 
     local_points
 }
+
+#[cfg(test)]
+mod util_test {
+    use super::*;
+
+    #[test]
+    fn dbscan_test_ok() {
+        let eps = 5.0;
+        let min_pts = 2;
+
+        let mut points: Vec<Point> = vec![];
+
+        // Cluster 1
+        points.push(Point::new(0.0, 0.0));
+        points.push(Point::new(1.0, 0.0));
+        points.push(Point::new(0.0, 1.0));
+        points.push(Point::new(1.0, 1.0));
+
+        // Cluster 2
+        points.push(Point::new(100.0, 0.0));
+        points.push(Point::new(100.0, 1.0));
+        points.push(Point::new(99.0, 0.0));
+        points.push(Point::new(99.0, 1.0));
+
+        // Cluster 3
+        points.push(Point::new(0.0, 100.0));
+        points.push(Point::new(1.0, 100.0));
+        points.push(Point::new(0.0, 99.0));
+        points.push(Point::new(1.0, 99.0));
+
+        let clustered_points = dbscan(&points, eps, min_pts);
+
+        assert_eq!(clustered_points[&points[0]], Some(1));
+        assert_eq!(clustered_points[&points[1]], Some(1));
+        assert_eq!(clustered_points[&points[2]], Some(1));
+        assert_eq!(clustered_points[&points[3]], Some(1));
+
+        assert_eq!(clustered_points[&points[4]], Some(2));
+        assert_eq!(clustered_points[&points[5]], Some(2));
+        assert_eq!(clustered_points[&points[6]], Some(2));
+        assert_eq!(clustered_points[&points[7]], Some(2));
+
+        assert_eq!(clustered_points[&points[8]], Some(3));
+        assert_eq!(clustered_points[&points[9]], Some(3));
+        assert_eq!(clustered_points[&points[10]], Some(3));
+        assert_eq!(clustered_points[&points[11]], Some(3));
+    }
+
+    #[test]
+    fn dbscan_test_over_min_pts() {
+        let eps = 5.0;
+        let min_pts = 20;
+
+        let mut points: Vec<Point> = vec![];
+
+        points.push(Point::new(0.0, 0.0));
+        points.push(Point::new(1.0, 0.0));
+        points.push(Point::new(0.0, 1.0));
+        points.push(Point::new(1.0, 1.0));
+
+        let clustered_points = dbscan(&points, eps, min_pts);
+
+        // All noise
+        assert_eq!(clustered_points[&points[0]], Some(-1));
+        assert_eq!(clustered_points[&points[1]], Some(-1));
+        assert_eq!(clustered_points[&points[2]], Some(-1));
+        assert_eq!(clustered_points[&points[3]], Some(-1));
+    }
+
+    #[test]
+    fn dbscan_test_eps_too_short() {
+        let eps = 1.0;
+        let min_pts = 20;
+
+        let mut points: Vec<Point> = vec![];
+
+        points.push(Point::new(0.0, 0.0));
+        points.push(Point::new(10.0, 0.0));
+        points.push(Point::new(0.0, 10.0));
+        points.push(Point::new(10.0, 10.0));
+
+        let clustered_points = dbscan(&points, eps, min_pts);
+
+        // All noise
+        assert_eq!(clustered_points[&points[0]], Some(-1));
+        assert_eq!(clustered_points[&points[1]], Some(-1));
+        assert_eq!(clustered_points[&points[2]], Some(-1));
+        assert_eq!(clustered_points[&points[3]], Some(-1));
+    }
+
+    #[test]
+    fn ssim_identical() {
+        let imgx = 100;
+        let imgy = 100;
+
+        let dynamic_image = image::DynamicImage::new_rgb8(imgx, imgy);
+
+        let ssim_result = ssim(&dynamic_image.clone(), &dynamic_image.clone());
+
+        assert_eq!(ssim_result, 1.0);
+    }
+
+    #[test]
+    fn ssim_not_identical() {
+        let imgx = 100;
+        let imgy = 100;
+
+        let dynamic_image_1 = image::DynamicImage::new_rgb8(imgx, imgy);
+        let mut dynamic_image_2 = image::DynamicImage::new_rgb8(imgx, imgy);
+
+        for x in 0..imgx {
+            for y in 0..imgy {
+                let rgba = dynamic_image_2.get_pixel(x, y).data;
+
+                dynamic_image_2.put_pixel(
+                    x as u32,
+                    y as u32,
+                    image::Rgba([rgba[0] + 10, rgba[1] + 10, rgba[2] + 10, rgba[3]]),
+                );
+            }
+        }
+
+        let ssim_result = ssim(&dynamic_image_1, &dynamic_image_2);
+
+        assert_eq!(ssim_result, 0.061054904);
+    }
+
+    #[test]
+    fn ssim_rgb_identical() {
+        let imgx = 100;
+        let imgy = 100;
+
+        let dynamic_image = image::DynamicImage::new_rgb8(imgx, imgy);
+
+        let ssim_rgb_result = ssim_rgb(&dynamic_image.clone(), &dynamic_image.clone());
+
+        assert_eq!(ssim_rgb_result, 1.0);
+    }
+
+    #[test]
+    fn ssim_rgb_not_identical() {
+        let imgx = 100;
+        let imgy = 100;
+
+        let dynamic_image_1 = image::DynamicImage::new_rgb8(imgx, imgy);
+        let mut dynamic_image_2 = image::DynamicImage::new_rgb8(imgx, imgy);
+
+        for x in 0..imgx {
+            for y in 0..imgy {
+                let rgba = dynamic_image_2.get_pixel(x, y).data;
+
+                dynamic_image_2.put_pixel(
+                    x as u32,
+                    y as u32,
+                    image::Rgba([rgba[0] + 10, rgba[1] + 10, rgba[2] + 10, rgba[3]]),
+                );
+            }
+        }
+
+        let ssim_rgb_result = ssim_rgb(&dynamic_image_1, &dynamic_image_2);
+
+        assert_eq!(ssim_rgb_result, 0.022539923);
+    }
+
+    #[test]
+    fn get_diff_points_identical() {
+        let imgx = 100;
+        let imgy = 100;
+
+        let dynamic_image = image::DynamicImage::new_rgb8(imgx, imgy);
+        let block_dimension = (10, 10);
+        let threshold = 0.4;
+        let threshold_delta_rate = 0.9;
+
+        let diff_points = get_diff_points(
+            &mut dynamic_image.clone(),
+            &mut dynamic_image.clone(),
+            block_dimension,
+            threshold,
+            threshold_delta_rate,
+        );
+
+        assert!(diff_points.is_empty());
+    }
+
+    #[test]
+    fn get_diff_points_not_identical() {
+        let imgx = 100;
+        let imgy = 100;
+
+        let mut dynamic_image_1 = image::DynamicImage::new_rgb8(imgx, imgy);
+        let mut dynamic_image_2 = image::DynamicImage::new_rgb8(imgx, imgy);
+
+        for x in 40..50 {
+            for y in 40..50 {
+                let rgba = dynamic_image_2.get_pixel(x, y).data;
+
+                dynamic_image_2.put_pixel(
+                    x as u32,
+                    y as u32,
+                    image::Rgba([rgba[0] + 10, rgba[1] + 10, rgba[2] + 10, rgba[3]]),
+                );
+            }
+        }
+
+        let block_dimension = (10, 10);
+        let threshold = 0.4;
+        let threshold_delta_rate = 0.9;
+
+        let diff_points = get_diff_points(
+            &mut dynamic_image_1,
+            &mut dynamic_image_2,
+            block_dimension,
+            threshold,
+            threshold_delta_rate,
+        );
+
+        assert_eq!(diff_points.len(), 100);
+
+        for point in diff_points.iter() {
+            assert!((point.x >= 40.0 && point.x < 50.0) && (point.y >= 40.0 && point.y < 50.0));
+        }
+    }
+}
