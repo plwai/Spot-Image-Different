@@ -53,9 +53,7 @@ fn construct_diameter(point_1: &Point, point_2: &Point) -> Circle {
 
     let new_point = Point::new(x, y);
 
-    let radius = new_point
-        .distance(point_1)
-        .max(new_point.distance(point_2));
+    let radius = new_point.distance(point_1).max(new_point.distance(point_2));
 
     Circle::new(new_point, radius)
 }
@@ -115,17 +113,13 @@ fn construct_two_point_circle_enclosing(
                 if cross_result > 0.0
                     && (left.is_none()
                         || point_3.cross_product(&c.mid_point.difference(point_1))
-                            > point_3.cross_product(
-                                &left.unwrap().mid_point.difference(point_1),
-                            ))
+                            > point_3.cross_product(&left.unwrap().mid_point.difference(point_1)))
                 {
                     left = Some(c);
                 } else if cross_result < 0.0
                     && (right.is_none()
                         || point_3.cross_product(&c.mid_point.difference(point_1))
-                            > point_3.cross_product(
-                                &right.unwrap().mid_point.difference(point_1),
-                            ))
+                            > point_3.cross_product(&right.unwrap().mid_point.difference(point_1)))
                 {
                     right = Some(c);
                 }
@@ -171,13 +165,70 @@ fn construct_circumcircle(a: &Point, b: &Point, c: &Point) -> Option<Circle> {
         / d;;
 
     let p = Point::new(ox + x, oy + y);
-    let r = p
-        .distance(a)
-        .max(p.distance(b))
-        .max(p.distance(c));
+    let r = p.distance(a).max(p.distance(b)).max(p.distance(c));
 
     Some(Circle {
         mid_point: p,
         radius: r,
     })
+}
+
+#[cfg(test)]
+mod circle_test {
+    use super::*;
+
+    #[test]
+    fn contains_point_test() {
+        let point = Point::new(0.0, 0.0);
+        let circle = Circle::new(point, 20.0);
+
+        let inner_point = Point::new(1.0, 1.0);
+        let outter_point = Point::new(30.0, 30.0);
+
+        assert!(circle.contains_point(&inner_point));
+        assert!(!circle.contains_point(&outter_point));
+    }
+
+    #[test]
+    fn compute_smallest_circle_test() {
+        let mut points_1 = vec![];
+        let mut points_2 = vec![];
+
+        points_1.push(Point::new(0.0, 0.0));
+        points_1.push(Point::new(0.0, 1.0));
+        points_1.push(Point::new(1.0, 0.0));
+        points_1.push(Point::new(1.0, 1.0));
+
+        points_2.push(Point::new(5.0, 0.0));
+        points_2.push(Point::new(5.0, 1.0));
+        points_2.push(Point::new(6.0, 0.0));
+        points_2.push(Point::new(10.0, 1.0));
+
+        let mut points_group: HashMap<i32, Vec<Point>> = HashMap::new();
+
+        points_group.insert(1, points_1);
+        points_group.insert(2, points_2);
+
+        let circles = compute_smallest_circle(points_group);
+
+        let mut expeted_points = vec![];
+        let mut expected_radius = vec![];
+
+        expeted_points.push(Point::new(7.5, 0.5));
+        expeted_points.push(Point::new(0.5, 0.5));
+
+        expected_radius.push(0.70710677);
+        expected_radius.push(2.5495098);
+
+        for circle in circles.iter() {
+            match circle {
+                Some(c) => {
+                    println!("{} {} {}", c.mid_point.x, c.mid_point.y, c.radius);
+                    assert!(expeted_points.contains(&c.mid_point));
+                    assert!(expected_radius.contains(&c.radius));
+                }
+                _ => assert!(false),
+            }
+        }
+    }
 }
