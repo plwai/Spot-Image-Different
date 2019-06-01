@@ -34,11 +34,9 @@ pub fn dbscan(
         cluster_id = cluster_id + 1;
         points_map.insert(*point, Some(cluster_id));
 
-        let mut start = 0;
-
         loop {
-            for index in start..neighbors.len() {
-                start = index;
+            let mut extend_neighbors = vec![];
+            for index in 0..neighbors.len() {
                 let sp = neighbors[index];
 
                 if points_map[sp] == Some(-1) {
@@ -53,15 +51,22 @@ pub fn dbscan(
 
                 let seed_neighbors = points
                     .iter()
-                    .filter(|p| p.distance(sp) <= eps && !neighbors.contains(p))
+                    .filter(|p| {
+                        p.distance(sp) <= eps
+                            && (points_map[p] == Some(-1) || points_map[p].is_none())
+                            && !neighbors.contains(p)
+                            && !extend_neighbors.contains(p)
+                    })
                     .collect::<Vec<_>>();
 
                 if seed_neighbors.len() >= min_pts {
-                    neighbors.extend(seed_neighbors);
+                    extend_neighbors.extend(seed_neighbors);
                 }
             }
 
-            if start == neighbors.len() - 1 {
+            neighbors = extend_neighbors;
+
+            if neighbors.is_empty() {
                 break;
             }
         }

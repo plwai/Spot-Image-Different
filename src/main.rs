@@ -1,4 +1,5 @@
 use std::env;
+use std::time::Instant;
 
 use spot_difference::picture::Picture;
 
@@ -7,6 +8,9 @@ fn main() {
 
     let mut picture_1 = Picture::load(args.get(1).unwrap().to_string()).unwrap();
     let mut picture_2 = Picture::load(args.get(2).unwrap().to_string()).unwrap();
+    let output_path = args.get(3).unwrap();
+
+    let now = Instant::now();
 
     picture_1.spot_different_custom_config(
         &mut picture_2,
@@ -18,6 +22,8 @@ fn main() {
         13,
         4,
         (255, 0, 0),
-        "answer.jpg",
+        output_path,
     );
+
+    println!("Used {} seconds", now.elapsed().as_secs());
 }

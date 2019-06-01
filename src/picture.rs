@@ -11,7 +11,7 @@ pub use self::circle::Circle;
 pub use self::point::Point;
 
 pub struct Picture {
-    img: DynamicImage,
+    pub img: DynamicImage,
     _img_path: String,
 }
 
