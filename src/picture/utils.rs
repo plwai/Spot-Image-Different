@@ -22,7 +22,7 @@ pub fn dbscan(
 
         let mut neighbors = points
             .iter()
-            .filter(|p| p.calculate_distance(&point) <= eps)
+            .filter(|p| p.distance(&point) <= eps)
             .collect::<Vec<_>>();
 
         if neighbors.len() < min_pts {
@@ -53,7 +53,7 @@ pub fn dbscan(
 
                 let seed_neighbors = points
                     .iter()
-                    .filter(|p| p.calculate_distance(sp) <= eps && !neighbors.contains(p))
+                    .filter(|p| p.distance(sp) <= eps && !neighbors.contains(p))
                     .collect::<Vec<_>>();
 
                 if seed_neighbors.len() >= min_pts {

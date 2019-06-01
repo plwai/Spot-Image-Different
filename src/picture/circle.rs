@@ -15,7 +15,7 @@ impl Circle {
     }
 
     pub fn contains_point(&self, point: &Point) -> bool {
-        self.mid_point.calculate_distance(point) <= self.radius * (1.0 + 1e-14)
+        self.mid_point.distance(point) <= self.radius * (1.0 + 1e-14)
     }
 }
 
@@ -54,8 +54,8 @@ fn construct_diameter(point_1: &Point, point_2: &Point) -> Circle {
     let new_point = Point::new(x, y);
 
     let radius = new_point
-        .calculate_distance(point_1)
-        .max(new_point.calculate_distance(point_2));
+        .distance(point_1)
+        .max(new_point.distance(point_2));
 
     Circle::new(new_point, radius)
 }
@@ -98,7 +98,7 @@ fn construct_two_point_circle_enclosing(
     let mut left: Option<Circle> = None;
     let mut right: Option<Circle> = None;
 
-    let point_3 = point_1.calculate_difference(point_2);
+    let point_3 = point_1.difference(point_2);
 
     for index in 0..end {
         let point_r = &shuffled_points[index];
@@ -107,24 +107,24 @@ fn construct_two_point_circle_enclosing(
             continue;
         }
 
-        let cross_result = point_3.cross_product(&point_r.calculate_difference(point_1));
+        let cross_result = point_3.cross_product(&point_r.difference(point_1));
         let circle_2 = construct_circumcircle(point_1, point_2, point_r);
 
         match circle_2 {
             Some(c) => {
                 if cross_result > 0.0
                     && (left.is_none()
-                        || point_3.cross_product(&c.mid_point.calculate_difference(point_1))
+                        || point_3.cross_product(&c.mid_point.difference(point_1))
                             > point_3.cross_product(
-                                &left.unwrap().mid_point.calculate_difference(point_1),
+                                &left.unwrap().mid_point.difference(point_1),
                             ))
                 {
                     left = Some(c);
                 } else if cross_result < 0.0
                     && (right.is_none()
-                        || point_3.cross_product(&c.mid_point.calculate_difference(point_1))
+                        || point_3.cross_product(&c.mid_point.difference(point_1))
                             > point_3.cross_product(
-                                &right.unwrap().mid_point.calculate_difference(point_1),
+                                &right.unwrap().mid_point.difference(point_1),
                             ))
                 {
                     right = Some(c);
@@ -172,9 +172,9 @@ fn construct_circumcircle(a: &Point, b: &Point, c: &Point) -> Option<Circle> {
 
     let p = Point::new(ox + x, oy + y);
     let r = p
-        .calculate_distance(a)
-        .max(p.calculate_distance(b))
-        .max(p.calculate_distance(c));
+        .distance(a)
+        .max(p.distance(b))
+        .max(p.distance(c));
 
     Some(Circle {
         mid_point: p,

@@ -78,6 +78,7 @@ impl Picture {
         circle_offset: i32,
         circle_thickness: i32,
         circle_color: (u8, u8, u8),
+        output_path: &str,
     ) {
         // Get points which have high deviation
         let points = utils::get_diff_points(
@@ -118,7 +119,7 @@ impl Picture {
             }
         }
 
-        rhs_picture.img.save("answer.jpg").unwrap();
+        rhs_picture.img.save(output_path).unwrap();
     }
 
     fn draw_pixel(&mut self, x: i32, y: i32, colour: (u8, u8, u8)) {
