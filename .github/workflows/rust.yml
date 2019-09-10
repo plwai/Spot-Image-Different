@@ -28,8 +28,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    continue-on-error: true
     - uses: actions/checkout@v1
+    continue-on-error: true
     - name: Build
       run: cargo +nightly build --verbose
     - name: Run tests
