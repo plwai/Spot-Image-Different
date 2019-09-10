@@ -29,8 +29,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-      continue-on-error: true
     - name: Build
+      continue-on-error: true
       run: cargo +nightly build --verbose
     - name: Run tests
+      continue-on-error: true
       run: cargo +nightly test --verbose
