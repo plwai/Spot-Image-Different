@@ -13,7 +13,7 @@ on:
 
 jobs:
   build_stable:
-    name: Stable Rust
+    name: Build
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -31,7 +31,7 @@ jobs:
       run: cargo test --verbose
       
   build_nightly:
-    name: Nightly Rust
+    name: Build
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
