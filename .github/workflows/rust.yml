@@ -15,8 +15,15 @@ jobs:
   build_stable:
     name: Stable Rust
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        rust: [stable]
 
     steps:
+    - uses: hecrj/setup-rust-action@v1
+      with:
+        rust-version: ${{ matrix.rust }}
     - uses: actions/checkout@v1
     - name: Build
       run: cargo build --verbose
@@ -29,7 +36,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
-        rust: [stable, nightly]
+        rust: [nightly]
 
     steps:
     - uses: hecrj/setup-rust-action@v1
