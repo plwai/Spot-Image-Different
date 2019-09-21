@@ -21,7 +21,7 @@ impl Circle {
 
 // Smallest Circle Problem
 pub fn compute_smallest_circle(points_group: HashMap<i32, Vec<Point>>) -> Vec<Option<Circle>> {
-    let circle = points_group
+    let circles = points_group
         .iter()
         .map(|(_group, points)| {
             let shuffled_points = &mut points.clone()[..];
@@ -44,7 +44,7 @@ pub fn compute_smallest_circle(points_group: HashMap<i32, Vec<Point>>) -> Vec<Op
         })
         .collect();
 
-    circle
+    circles
 }
 
 fn construct_diameter(point_1: &Point, point_2: &Point) -> Circle {
@@ -96,7 +96,7 @@ fn construct_two_point_circle_enclosing(
     let mut left: Option<Circle> = None;
     let mut right: Option<Circle> = None;
 
-    let point_3 = point_1.difference(point_2);
+    let point_3 = point_2.difference(point_1);
 
     for index in 0..end {
         let point_r = &shuffled_points[index];
@@ -162,7 +162,7 @@ fn construct_circumcircle(a: &Point, b: &Point, c: &Point) -> Option<Circle> {
     let y = ((ax * ax + ay * ay) * (cx - bx)
         + (bx * bx + by * by) * (ax - cx)
         + (cx * cx + cy * cy) * (bx - ax))
-        / d;;
+        / d;
 
     let p = Point::new(ox + x, oy + y);
     let r = p.distance(a).max(p.distance(b)).max(p.distance(c));

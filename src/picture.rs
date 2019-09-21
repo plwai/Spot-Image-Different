@@ -1,17 +1,18 @@
 mod circle;
+mod drawer;
 mod point;
-pub mod utils;
+mod utils;
 
 use image;
 use image::*;
 
 use std::collections::HashMap;
 
-pub use self::circle::Circle;
-pub use self::point::Point;
+use self::drawer::draw_circle;
+use self::point::Point;
 
 pub struct Picture {
-    pub img: DynamicImage,
+    img: DynamicImage,
     _img_path: String,
 }
 
@@ -52,7 +53,8 @@ impl Picture {
         for circle in circles {
             match circle {
                 Some(c) => {
-                    rhs_picture.draw_circle(
+                    draw_circle(
+                        rhs_picture,
                         c.mid_point.x as i32,
                         c.mid_point.y as i32,
                         c.radius as i32 + 13,
@@ -73,7 +75,7 @@ impl Picture {
         block_dimension: (u32, u32),
         threshold: f32,
         threshold_delta_rate: f32,
-        fps: f32,
+        eps: f32,
         min_points: usize,
         circle_offset: i32,
         circle_thickness: i32,
@@ -90,7 +92,7 @@ impl Picture {
         );
 
         // Cluster the points into groups
-        let point_groups = utils::dbscan(&points, fps, min_points);
+        let point_groups = utils::dbscan(&points, eps, min_points);
         let result = point_groups
             .iter()
             .fold(HashMap::new(), |mut acc, (point, group)| {
@@ -100,6 +102,12 @@ impl Picture {
                 acc
             });
 
+        // Filter noise
+        let result = result
+            .into_iter()
+            .filter(|(_group_id, points)| points.len() > min_points)
+            .collect::<HashMap<i32, Vec<_>>>();
+
         // Find the smallest circle midpoint for every group of points
         let circles = circle::compute_smallest_circle(result);
 
@@ -107,7 +115,8 @@ impl Picture {
         for circle in circles {
             match circle {
                 Some(c) => {
-                    rhs_picture.draw_circle(
+                    draw_circle(
+                        rhs_picture,
                         c.mid_point.x as i32,
                         c.mid_point.y as i32,
                         c.radius as i32 + circle_offset,
@@ -120,97 +129,5 @@ impl Picture {
         }
 
         rhs_picture.img.save(output_path).unwrap();
-    }
-
-    fn draw_pixel(&mut self, x: i32, y: i32, colour: (u8, u8, u8)) {
-        let mut x = x;
-        let mut y = y;
-
-        if x >= self.img.dimensions().0 as i32 {
-            x = self.img.dimensions().0 as i32 - 1;
-        }
-
-        if y >= self.img.dimensions().1 as i32 {
-            y = self.img.dimensions().1 as i32 - 1;
-        }
-
-        if x < 0 {
-            x = 0;
-        }
-
-        if y < 0 {
-            y = 0;
-        }
-
-        self.img.put_pixel(
-            x as u32,
-            y as u32,
-            image::Rgba([colour.0, colour.1, colour.2, 1]),
-        );
-    }
-
-    // https://stackoverflow.com/questions/27755514/circle-with-thickness-drawing-algorithm
-    fn draw_circle(
-        &mut self,
-        xc: i32,
-        yc: i32,
-        inner_radius: i32,
-        outer_radius: i32,
-        colour: (u8, u8, u8),
-    ) {
-        let mut xo = outer_radius;
-        let mut xi = inner_radius;
-        let mut y = 0;
-        let mut erro = 1 - xo;
-        let mut erri = 1 - xi;
-
-        while xo >= y {
-            self.x_line(xc + xi, xc + xo, yc + y, colour);
-            self.y_line(xc + y, yc + xi, yc + xo, colour);
-            self.x_line(xc - xo, xc - xi, yc + y, colour);
-            self.y_line(xc - y, yc + xi, yc + xo, colour);
-            self.x_line(xc - xo, xc - xi, yc - y, colour);
-            self.y_line(xc - y, yc - xo, yc - xi, colour);
-            self.x_line(xc + xi, xc + xo, yc - y, colour);
-            self.y_line(xc + y, yc - xo, yc - xi, colour);
-
-            y = y + 1;
-
-            if erro < 0 {
-                erro += 2 * y + 1;
-            } else {
-                xo = xo - 1;
-                erro += 2 * (y - xo + 1);
-            }
-
-            if y > inner_radius {
-                xi = y;
-            } else {
-                if erri < 0 {
-                    erri += 2 * y + 1;
-                } else {
-                    xi = xi - 1;
-                    erri += 2 * (y - xi + 1);
-                }
-            }
-        }
-    }
-
-    fn x_line(&mut self, x1: i32, x2: i32, y: i32, colour: (u8, u8, u8)) {
-        let mut x1 = x1;
-
-        while x1 <= x2 {
-            self.draw_pixel(x1, y, colour);
-            x1 = x1 + 1;
-        }
-    }
-
-    fn y_line(&mut self, x: i32, y1: i32, y2: i32, colour: (u8, u8, u8)) {
-        let mut y1 = y1;
-
-        while y1 <= y2 {
-            self.draw_pixel(x, y1, colour);
-            y1 = y1 + 1;
-        }
     }
 }

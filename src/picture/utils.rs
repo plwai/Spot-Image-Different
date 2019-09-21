@@ -76,6 +76,7 @@ pub fn dbscan(
 }
 
 // SSIM using Luma data
+#[allow(dead_code)]
 pub fn ssim(img_1: &DynamicImage, img_2: &DynamicImage) -> f32 {
     let img_1 = img_1.grayscale();
     let img_2 = img_2.grayscale();

@@ -1,7 +1,9 @@
+pub mod picture;
+
 use std::env;
 use std::time::Instant;
 
-use spot_difference::picture::Picture;
+use crate::picture::Picture;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -12,13 +14,14 @@ fn main() {
 
     let now = Instant::now();
 
-    picture_1.spot_different_custom_config(
+    Picture::spot_different_custom_config(
+        &mut picture_1,
         &mut picture_2,
-        (10, 10),
-        0.4,
-        0.9,
-        20.0,
-        1,
+        (5, 5),
+        0.5,
+        0.50,
+        10.0,
+        2,
         13,
         4,
         (255, 0, 0),

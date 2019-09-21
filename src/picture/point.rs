@@ -1,4 +1,5 @@
 use std::hash::{Hash, Hasher};
+use std::{fmt, fmt::Debug};
 
 #[derive(Clone, Copy)]
 pub struct Point {
@@ -19,10 +20,7 @@ impl Point {
     }
 
     pub fn distance(&self, point_2: &Point) -> f32 {
-        let (x, y) = (
-            (self.x as f32 - point_2.x as f32),
-            (self.y as f32 - point_2.y as f32),
-        );
+        let (x, y) = ((self.x - point_2.x), (self.y - point_2.y));
 
         x.hypot(y)
     }
@@ -40,7 +38,7 @@ impl Point {
     }
 
     pub fn cross_product(&self, point_2: &Point) -> f32 {
-        self.x as f32 * point_2.y as f32 - self.y as f32 * point_2.x as f32
+        self.x * point_2.y - self.y * point_2.x
     }
 }
 
@@ -58,6 +56,12 @@ impl PartialEq for Point {
 }
 
 impl Eq for Point {}
+
+impl Debug for Point {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Point {{ x: {}, y: {} }}", self.x, self.y)
+    }
+}
 
 #[cfg(test)]
 mod point_test {
