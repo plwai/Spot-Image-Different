@@ -17,11 +17,11 @@ pub struct Picture {
 }
 
 impl Picture {
-    pub fn load(img_path: String) -> Result<Self, std::io::Error> {
-        match image::open(&img_path) {
+    pub fn load(img_path: &str) -> Result<Self, std::io::Error> {
+        match image::open(img_path) {
             Ok(img) => Ok(Picture {
                 img,
-                _img_path: img_path,
+                _img_path: img_path.to_string(),
             }),
             _ => Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,

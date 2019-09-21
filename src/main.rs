@@ -8,8 +8,8 @@ use crate::picture::Picture;
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let mut picture_1 = Picture::load(args.get(1).unwrap().to_string()).unwrap();
-    let mut picture_2 = Picture::load(args.get(2).unwrap().to_string()).unwrap();
+    let mut picture_1 = Picture::load(args.get(1).unwrap()).unwrap();
+    let mut picture_2 = Picture::load(args.get(2).unwrap()).unwrap();
     let output_path = args.get(3).unwrap();
 
     let now = Instant::now();
