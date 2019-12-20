@@ -15,4 +15,4 @@
 
 ## Article
 
-TBD
+[The magic portal](https://medium.com/@pailee.wai/solving-spot-the-difference-puzzle-d26a884de12d)
