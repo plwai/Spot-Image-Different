@@ -2,6 +2,15 @@
 
 `Spot Image Difference` is a casual project that aims to play [Spot the Difference](https://en.wikipedia.org/wiki/Spot_the_difference) puzzle game automatically.
 
+## Run
+
+```
+cargo run <img path 1> <img path 2> <output path>
+
+e.g.
+cargo run ./input1.jpg ./input2.jpg ./output.jpg
+```
+
 ## Example
 
 <p align="center">
